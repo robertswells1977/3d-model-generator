@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+.env
+
+# .NET
+bin/
+obj/
+
+# Misc
+.DS_Store
+temp/
+models/
