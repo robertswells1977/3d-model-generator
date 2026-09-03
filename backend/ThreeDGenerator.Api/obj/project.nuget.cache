@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "/1xjkw9GOx4=",
+  "success": true,
+  "projectFilePath": "/Users/robwells/sc/3d-model-generator/backend/ThreeDGenerator.Api/ThreeDGenerator.Api.csproj",
+  "expectedPackageFiles": [
+    "/Users/robwells/.nuget/packages/microsoft.aspnetcore.openapi/9.0.4/microsoft.aspnetcore.openapi.9.0.4.nupkg.sha512",
+    "/Users/robwells/.nuget/packages/microsoft.openapi/1.6.17/microsoft.openapi.1.6.17.nupkg.sha512"
+  ],
+  "logs": []
+}

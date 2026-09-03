@@ -1,0 +1,28 @@
+CREATE TABLE IF NOT EXISTS Users (
+    Id UUID PRIMARY KEY,
+    GoogleId VARCHAR(255) UNIQUE,
+    Email VARCHAR(255),
+    Name VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS Projects (
+    Id UUID PRIMARY KEY,
+    UserId UUID REFERENCES Users(Id),
+    Name VARCHAR(255),
+    Description TEXT,
+    LLMPlan TEXT,
+    Status VARCHAR(50),
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ProjectVersions (
+    Id UUID PRIMARY KEY,
+    ProjectId UUID REFERENCES Projects(Id),
+    VersionNumber INT,
+    Status VARCHAR(50),
+    FilePathSTL VARCHAR(500),
+    FilePathF3D VARCHAR(500),
+    ImagePath VARCHAR(500),
+    AgentLog TEXT,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
