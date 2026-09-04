@@ -1,4 +1,4 @@
-import { Project } from '../types';
+import type { Project } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5179/api';
 
