@@ -1,15 +1,17 @@
 import os
 import time
 import uuid
+import json
 import psycopg2
 import requests
 from psycopg2.extras import RealDictCursor
 from openai import OpenAI
 
-DB_HOST = os.getenv("DB_HOST", "localhost")
-LLM_URL = os.getenv("LLM_URL", "http://localhost:8080/v1")
-FUSION_URL = os.getenv("FUSION_URL", "http://localhost:5000")
+DB_HOST = os.getenv("DB_HOST", "db")
+LLM_URL = os.getenv("LLM_URL", "http://llama-server:8080/v1")
+FUSION_URL = os.getenv("FUSION_URL", "http://host.docker.internal:5000")
 EXPORT_DIR_HOST = os.getenv("EXPORT_DIR_HOST", "/Users/robwells/sc/3d-model-generator/temp")
+API_INTERNAL_URL = "http://api:5045/api"
 
 client = OpenAI(base_url=LLM_URL, api_key="sk-no-key-needed")
 
@@ -21,82 +23,252 @@ def get_db_connection():
         password="password"
     )
 
-def generate_fusion_script(description, attempt, previous_error=None):
-    prompt = f"""
-Write a complete, executable Python script for Autodesk Fusion 360 that builds the following item: {description}.
-The script must import adsk.core and adsk.fusion.
-It must create a new document, build the geometry, and EXPORT the final body as an STL file to EXACTLY this absolute path:
-{EXPORT_DIR_HOST}/project_{{project_id}}_v{attempt}.stl
+def log_to_project(project_id, msg):
+    print(f"[{project_id}] {msg}")
+    try:
+        requests.post(f"{API_INTERNAL_URL}/projects/{project_id}/log", json={"message": msg}, timeout=5)
+    except Exception as e:
+        print(f"Failed to push log: {e}")
 
-Do not include markdown blocks, just pure python code.
-"""
-    if previous_error:
-        prompt += f"\n\nThe previous attempt failed with this error: {previous_error}\nPlease fix it."
-
-    response = client.chat.completions.create(
-        model="gemma-2-2b-it",
-        messages=[
-            {"role": "system", "content": "You are an expert Autodesk Fusion 360 API Python developer. Only output raw Python code. Do not wrap in markdown."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.2
-    )
-    code = response.choices[0].message.content.strip()
-    if code.startswith("```python"):
-        code = code[9:]
-    if code.endswith("```"):
-        code = code[:-3]
-    return code.strip()
-
-def process_project(project):
+def process_planning(project):
     project_id = project['id']
     description = project['description']
-    
-    print(f"Processing project {project_id}...")
+    log_to_project(project_id, "Worker starting AI Approval plan generation...")
     
     conn = get_db_connection()
     cur = conn.cursor()
     
-    previous_error = None
-    
-    for attempt in range(1, 11):
-        print(f"Attempt {attempt} of 10...")
+    try:
+        prompt = f"""
+You are an expert CAD planner.
+Analyze this description: "{description}"
+
+Decide if this is a single model or should be printed in multiple parts with connectors.
+For each part, define a height, width, and length (floats).
+
+Return ONLY JSON matching this exact structure:
+{{
+  "type": "single" | "multi-part",
+  "parts": [
+    {{
+      "name": "string",
+      "height": 10.0,
+      "width": 10.0,
+      "length": 10.0,
+      "shapes": ["string"],
+      "connections": ["string"]
+    }}
+  ],
+  "image_prompt": "A clean 3D render of a..."
+}}
+"""
+        log_to_project(project_id, "Prompting LLM (gemma-2-2b-it) to structure CAD parts...")
+        response = client.chat.completions.create(
+            model="gemma-2-2b-it",
+            messages=[
+                {"role": "system", "content": "You output strict JSON. No markdown."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3
+        )
+        content = response.choices[0].message.content.strip()
+        content = content.replace("```json", "").replace("```", "").strip()
+        
+        plan_data = json.loads(content)
+        log_to_project(project_id, "Successfully parsed CAD layout plan from LLM.")
+        
+        image_prompt = plan_data.get("image_prompt", f"3d model of {description}")
+        sd_url = "https://sd.alreadyagents.com/sdapi/v1/txt2img"
+        img_filename = f"plan_{project_id}.png"
+        img_path = f"/temp/{img_filename}"
+        
+        log_to_project(project_id, f"Sending direct API call to Stable Diffusion for concept art (Prompt: {image_prompt})...")
         try:
-            # Generate code replacing placeholder with actual ID
-            script = generate_fusion_script(description, attempt, previous_error)
-            script = script.replace("{project_id}", str(project_id))
+            sd_resp = requests.post(sd_url, json={
+                "prompt": image_prompt + ", high quality, 3d render, white background",
+                "steps": 20,
+                "width": 512,
+                "height": 512
+            }, timeout=30)
+            if sd_resp.status_code == 200:
+                import base64
+                img_data = sd_resp.json()['images'][0]
+                with open(img_path, "wb") as fh:
+                    fh.write(base64.b64decode(img_data))
+                plan_data['image_url'] = f"/temp/{img_filename}"
+                log_to_project(project_id, "Stable Diffusion image received and saved.")
+            else:
+                plan_data['image_url'] = None
+                log_to_project(project_id, f"Stable Diffusion API error: HTTP {sd_resp.status_code}")
+        except Exception as e:
+            log_to_project(project_id, f"SD API connection error: {e}")
+            plan_data['image_url'] = None
             
-            # Send to Fusion
-            print("Sending to Fusion 360...")
-            resp = requests.post(f"{FUSION_URL}/run_script", json={"code": script}, timeout=60)
+        cur.execute("UPDATE Projects SET LLMPlan = %s, Status = 'planned' WHERE Id = %s", (json.dumps(plan_data), project_id))
+        conn.commit()
+        log_to_project(project_id, "Plan ready for User Approval!")
+    except Exception as e:
+        log_to_project(project_id, f"Planning error: {e}")
+        fallback_plan = {"error": str(e), "raw": content if 'content' in locals() else ""}
+        cur.execute("UPDATE Projects SET LLMPlan = %s, Status = 'planned' WHERE Id = %s", (json.dumps(fallback_plan), project_id))
+        conn.commit()
+    finally:
+def run_agent_loop(project_id, description, plan_json, stl_host_path):
+    log_to_project(project_id, "Executing: Starting a fresh Fusion Workspace (new_design)...")
+    try:
+        requests.post(f"{FUSION_URL}/new_design", json={}, timeout=10)
+    except:
+        pass
+        
+    system_prompt = """
+You are an autonomous AI CAD Engineer. You are building a 3D model in Autodesk Fusion 360.
+You will think step-by-step and execute one tool at a time.
+
+Fusion 360 Units: 1 unit = 1 cm = 10 mm. All mm dimensions must be divided by 10 (e.g. 10.0 becomes 1.0).
+
+Available tools:
+1. "draw_box" - args: {"width_value": float, "height_value": float, "depth_value": float, "x_value": float, "y_value": float, "z_value": float}
+2. "draw_cylinder" - args: {"radius": float, "height": float, "x": float, "y": float, "z": float}
+3. "sphere" - args: {"radius": float, "x": float, "y": float, "z": float}
+4. "draw_lines" - args: {"points": [[x,y,z], [x,y,z], ...]} (Draws a closed 2D polygon)
+5. "extrude_last_sketch" - args: {"value": float, "taperangle": float} (Extrudes the polygon you just drew)
+6. "finish" - args: {} (Call this when the 3D model is completely finished)
+
+To execute a tool, output a single JSON object (and NO OTHER TEXT) matching this format exactly:
+{"thought": "I need to draw a base triangle first", "tool": "draw_lines", "args": {"points": [[0,0,0], [2,0,0], [1,2,0]]}}
+
+The system will then respond with the result of the tool execution. Then you will output the next tool call, until you call "finish".
+"""
+    clean_plan = {}
+    try:
+        clean_plan = json.loads(plan_json)
+        if "image_url" in clean_plan:
+            del clean_plan["image_url"]
+    except:
+        clean_plan = plan_json
+        
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": f"Build this project.\nDescription: {description}\nApproved Plan: {json.dumps(clean_plan)}"}
+    ]
+    
+    endpoint_map = {
+        "draw_box": "/Box",
+        "draw_cylinder": "/draw_cylinder",
+        "sphere": "/sphere",
+        "draw_lines": "/draw_lines",
+        "extrude_last_sketch": "/extrude_last_sketch"
+    }
+    
+    max_steps = 15
+    for step in range(max_steps):
+        log_to_project(project_id, f"Agent Thinking (Step {step+1}/{max_steps})...")
+        response = client.chat.completions.create(
+            model="gemma-2-2b-it",
+            messages=messages,
+            temperature=0.1
+        )
+        content = response.choices[0].message.content.strip()
+        content = content.replace("```json", "").replace("```", "").strip()
+        
+        try:
+            command = json.loads(content)
+            thought = command.get("thought", "No thought provided")
+            tool = command.get("tool")
+            args = command.get("args", {})
+            
+            log_to_project(project_id, f"Agent Thought: {thought}")
+            
+            if tool == "finish":
+                log_to_project(project_id, "Agent decided model is finished.")
+                break
+                
+            path = endpoint_map.get(tool)
+            if not path:
+                error_msg = f"Unknown tool '{tool}'. Available tools: {list(endpoint_map.keys())} or 'finish'."
+                log_to_project(project_id, f"Agent Tool Error: {error_msg}")
+                messages.append({"role": "assistant", "content": content})
+                messages.append({"role": "user", "content": f"System Error: {error_msg}"})
+                continue
+                
+            log_to_project(project_id, f"Executing Tool: {tool} -> {json.dumps(args)}")
+            resp = requests.post(f"{FUSION_URL}{path}", json=args, timeout=30)
             
             if resp.status_code == 200:
-                print("Fusion executed successfully!")
-                # Insert version record
-                version_id = str(uuid.uuid4())
-                stl_path = f"/temp/project_{project_id}_v{attempt}.stl"
-                
-                cur.execute("""
-                    INSERT INTO ProjectVersions (Id, ProjectId, VersionNumber, Status, FilePathSTL, AgentLog)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """, (version_id, project_id, attempt, "viable option", stl_path, "Success!"))
-                conn.commit()
-                
-                # Mark project as completed
-                cur.execute("UPDATE Projects SET Status = 'completed' WHERE Id = %s", (project_id,))
-                conn.commit()
-                break
+                result_msg = "Success"
             else:
-                print(f"Fusion error: {resp.text}")
-                previous_error = resp.text
+                result_msg = f"Fusion Error: {resp.text}"
+                log_to_project(project_id, f"Tool failed: {result_msg}")
+                
+            messages.append({"role": "assistant", "content": content})
+            messages.append({"role": "user", "content": f"Tool Execution Result: {result_msg}"})
+            
+        except Exception as e:
+            log_to_project(project_id, f"Agent generated invalid JSON: {content} (Error: {e})")
+            messages.append({"role": "assistant", "content": content})
+            messages.append({"role": "user", "content": "System Error: Output was not valid JSON. You MUST output ONLY a JSON object."})
+
+    # Finally, export STL
+    try:
+        log_to_project(project_id, f"Exporting final STL -> {stl_host_path}")
+        export_args = {"Name": stl_host_path}
+        resp = requests.post(f"{FUSION_URL}/Export_STL", json=export_args, timeout=30)
+        if resp.status_code != 200:
+            log_to_project(project_id, f"STL Export failed: {resp.text}")
+            return False, resp.text
+    except Exception as e:
+        log_to_project(project_id, f"STL Export connection error: {e}")
+        return False, str(e)
+        
+    return True, "Success"
+
+def process_project(project):
+    project_id = project['id']
+    description = project['description']
+    plan_json = project.get('llmplan', '{}')
+    
+    log_to_project(project_id, "Worker starting Agentic Generation phase...")
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    for attempt in range(1, 4):
+        log_to_project(project_id, f"--- Generation Attempt {attempt}/3 ---")
+        
+        stl_filename = f"project_{project_id}_v{attempt}.stl"
+        stl_host_path = f"{EXPORT_DIR_HOST}/{stl_filename}"
+        
+        success, error_msg = run_agent_loop(project_id, description, plan_json, stl_host_path)
+            
+            if success:
+                time.sleep(2)
+                if os.path.exists(stl_container_path):
+                    log_to_project(project_id, "Fusion executed successfully and STL verified on disk!")
+                    
+                    version_id = str(uuid.uuid4())
+                    cur.execute("""
+                        INSERT INTO ProjectVersions (Id, ProjectId, VersionNumber, Status, FilePathSTL, ImagePath, AgentLog)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """, (version_id, project_id, attempt, "viable option", f"/temp/{stl_filename}", None, "Success! MCP sequence executed."))
+                    conn.commit()
+                    
+                    cur.execute("UPDATE Projects SET Status = 'completed' WHERE Id = %s", (project_id,))
+                    conn.commit()
+                    log_to_project(project_id, "Project generation entirely complete!")
+                    break
+                else:
+                    log_to_project(project_id, "ERROR: Fusion returned 200, but STL file was NOT created on disk.")
+                    previous_error = "STL file was not created on disk."
+            else:
+                log_to_project(project_id, f"Fusion error: {error_msg}")
+                previous_error = error_msg
                 
         except Exception as e:
-            print(f"Exception during attempt: {str(e)}")
+            log_to_project(project_id, f"Exception during attempt: {str(e)}")
             previous_error = str(e)
             
     else:
-        # Failed 10 times
-        print("Failed 10 attempts.")
+        log_to_project(project_id, "Failed 10 attempts. Project marked as failed.")
         cur.execute("UPDATE Projects SET Status = 'failed' WHERE Id = %s", (project_id,))
         conn.commit()
         
@@ -104,20 +276,33 @@ def process_project(project):
     conn.close()
 
 def main_loop():
-    print("Worker started. Polling for 'generating' projects...")
+    print("Worker started. Polling for 'planning' and 'generating' projects...")
     while True:
         try:
             conn = get_db_connection()
             cur = conn.cursor(cursor_factory=RealDictCursor)
+            
+            cur.execute("SELECT * FROM Projects WHERE Status = 'planning' LIMIT 1")
+            project_to_plan = cur.fetchone()
+            
+            if project_to_plan:
+                process_planning(project_to_plan)
+                cur.close()
+                conn.close()
+                continue
+                
             cur.execute("SELECT * FROM Projects WHERE Status = 'generating' LIMIT 1")
-            project = cur.fetchone()
+            project_to_generate = cur.fetchone()
+            
+            if project_to_generate:
+                process_project(project_to_generate)
+                cur.close()
+                conn.close()
+                continue
+            
             cur.close()
             conn.close()
-            
-            if project:
-                process_project(project)
-            else:
-                time.sleep(5)
+            time.sleep(2)
                 
         except Exception as e:
             print(f"Database error: {e}")

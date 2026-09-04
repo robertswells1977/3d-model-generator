@@ -81,5 +81,12 @@ namespace ThreeDGenerator.Api.Repositories
             await connection.ExecuteAsync("UPDATE Projects SET Status = @Status WHERE Id = @Id", 
                 new { Status = status, Id = projectId });
         }
+
+        public async Task UpdateProjectPlanAsync(Guid projectId, string llmPlan)
+        {
+            using var connection = new NpgsqlConnection(_connectionString);
+            await connection.ExecuteAsync("UPDATE Projects SET LLMPlan = @LLMPlan WHERE Id = @Id", 
+                new { LLMPlan = llmPlan, Id = projectId });
+        }
     }
 }

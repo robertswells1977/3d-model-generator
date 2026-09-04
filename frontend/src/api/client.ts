@@ -64,3 +64,20 @@ export const deleteVersion = async (projectId: string, versionId: string): Promi
   });
   if (!res.ok) throw new Error('Failed to delete version');
 };
+
+export const updateProjectPlan = async (id: string, llmPlan: string): Promise<void> => {
+  const res = await fetch(`${API_URL}/projects/${id}/plan`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ llmPlan })
+  });
+  if (!res.ok) throw new Error('Failed to update plan');
+};
+
+export const fetchFusionStatus = async (): Promise<{status: string, reason?: string}> => {
+  const res = await fetch(`${API_URL}/system/fusion-status`);
+  if (!res.ok) throw new Error('Failed to fetch status');
+  return res.json();
+};
+
+export const HUB_URL = "http://localhost:5045/hubs/project";

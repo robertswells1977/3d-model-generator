@@ -6,7 +6,7 @@ import Dashboard from './pages/Dashboard'
 import NewProject from './pages/NewProject'
 import ProjectDetail from './pages/ProjectDetail'
 
-import Navbar from './components/Navbar'
+import AppLayout from './components/AppLayout'
 
 const queryClient = new QueryClient();
 
@@ -66,17 +66,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="min-h-screen bg-gray-50/50">
-          <Navbar onLogout={logout} />
-          <main className="py-8">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/new" element={<NewProject />} />
-              <Route path="/project/:id" element={<ProjectDetail />} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </main>
-        </div>
+        <AppLayout onLogout={logout}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/new" element={<NewProject />} />
+            <Route path="/project/:id" element={<ProjectDetail />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </AppLayout>
       </BrowserRouter>
     </QueryClientProvider>
   )

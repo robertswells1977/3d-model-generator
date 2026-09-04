@@ -7,6 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddHttpClient();
+builder.Services.AddSignalR();
 builder.Services.AddScoped<ThreeDGenerator.Api.Repositories.ProjectRepository>();
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -58,4 +60,5 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<ThreeDGenerator.Api.Hubs.ProjectHub>("/hubs/project");
 app.Run();

@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 using ThreeDGenerator.Api.Models;
 using ThreeDGenerator.Api.Repositories;
 
+using Microsoft.AspNetCore.SignalR;
+using ThreeDGenerator.Api.Hubs;
+
 namespace ThreeDGenerator.Api.Controllers
 {
     [Authorize]
@@ -14,10 +17,12 @@ namespace ThreeDGenerator.Api.Controllers
     public class ProjectsController : ControllerBase
     {
         private readonly ProjectRepository _repository;
+        private readonly IHubContext<ProjectHub> _hubContext;
 
-        public ProjectsController(ProjectRepository repository)
+        public ProjectsController(ProjectRepository repository, IHubContext<ProjectHub> hubContext)
         {
             _repository = repository;
+            _hubContext = hubContext;
         }
 
         private Guid GetUserId()
@@ -104,6 +109,36 @@ namespace ThreeDGenerator.Api.Controllers
             // Set status to generating, Python worker will pick it up
             await _repository.UpdateProjectStatusAsync(id, "generating");
             return Ok(new { message = "Generation started" });
+        }
+
+        public class UpdatePlanRequest
+        {
+            public string LLMPlan { get; set; } = string.Empty;
+        }
+
+        [HttpPut("{id}/plan")]
+        public async Task<IActionResult> UpdateProjectPlan(Guid id, [FromBody] UpdatePlanRequest request)
+        {
+            var project = await _repository.GetProjectByIdAsync(id, GetUserId());
+            if (project == null) return NotFound();
+
+            await _repository.UpdateProjectPlanAsync(id, request.LLMPlan);
+            // Optionally, the frontend might trigger generation immediately after, 
+            // or they can just save it. We return OK.
+            return Ok();
+        }
+
+        public class LogRequest
+        {
+            public string Message { get; set; } = string.Empty;
+        }
+
+        [AllowAnonymous] // Allow worker to hit it without JWT
+        [HttpPost("{id}/log")]
+        public async Task<IActionResult> AddLog(Guid id, [FromBody] LogRequest request)
+        {
+            await _hubContext.Clients.Group(id.ToString()).SendAsync("ReceiveLog", request.Message);
+            return Ok();
         }
     }
 }
