@@ -46,7 +46,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowFrontend");
 
 // Serve the temp directory containing STLs and images
-var tempPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "temp");
+var tempPath = Path.Combine(Directory.GetCurrentDirectory(), "temp");
 if (!Directory.Exists(tempPath)) Directory.CreateDirectory(tempPath);
 
 app.UseStaticFiles(new StaticFileOptions

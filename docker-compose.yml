@@ -29,11 +29,34 @@ services:
       - FUSION_URL=http://host.docker.internal:5000
       - EXPORT_DIR_HOST=/Users/robwells/sc/3d-model-generator/temp
     volumes:
-      - ./temp:/temp
+      - ./temp:/app/temp
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       - db
+      - llama-server
+
+  api:
+    build:
+      context: ./backend/ThreeDGenerator.Api
+    ports:
+      - "5045:5045"
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=db;Database=threed_generator;Username=admin;Password=password
+    volumes:
+      - ./temp:/app/temp
+    depends_on:
+      - db
+      
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:5045/api
+    depends_on:
+      - api
 
 volumes:
   postgres_data:
