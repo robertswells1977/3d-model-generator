@@ -43,20 +43,21 @@ def process_planning(project):
 You are an expert CAD planner.
 Analyze this description: "{description}"
 
-Decide if this is a single model or should be printed in multiple parts with connectors.
-For each part, define a height, width, and length (floats).
+Determine the structural components needed to build this model.
+You must define AT LEAST ONE part in the "parts" array, even if it is a "single" model type.
+For each part, provide an estimated height, width, and length (floats in cm).
 
 Return ONLY JSON matching this exact structure:
 {{
   "type": "single" | "multi-part",
   "parts": [
     {{
-      "name": "string",
+      "name": "Base Shape",
       "height": 10.0,
       "width": 10.0,
       "length": 10.0,
-      "shapes": ["string"],
-      "connections": ["string"]
+      "shapes": ["cube", "sphere", etc],
+      "connections": ["attached to top"]
     }}
   ],
   "image_prompt": "A clean 3D render of a..."
@@ -113,6 +114,9 @@ Return ONLY JSON matching this exact structure:
         cur.execute("UPDATE Projects SET LLMPlan = %s, Status = 'planned' WHERE Id = %s", (json.dumps(fallback_plan), project_id))
         conn.commit()
     finally:
+        cur.close()
+        conn.close()
+
 def run_agent_loop(project_id, description, plan_json, stl_host_path, png_host_path):
     log_to_project(project_id, "Executing: Starting a fresh Fusion Workspace (new_design)...")
     try:
