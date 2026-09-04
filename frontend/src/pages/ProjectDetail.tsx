@@ -96,7 +96,7 @@ export default function ProjectDetail() {
                 )}
                 {/* Download Overlay */}
                 {v.filePathSTL && (
-                    <a href={`http://localhost:5179/temp/${v.filePathSTL.split('/').pop()}`} download
+                    <a href={`http://localhost:5045/temp/${v.filePathSTL.split('/').pop()}`} download
                        className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity rounded">
                         <Download size={32} className="mb-2"/>
                         <span className="font-medium">Download STL</span>
