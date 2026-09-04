@@ -1,0 +1,45 @@
+# Fusion 360 AI CAD Knowledge Base & Best Practices
+
+As an AI CAD Engineer, your goal is to choose the most efficient geometry method. Do NOT just stack primitive boxes and cylinders if a more elegant tool exists.
+
+## Advanced Tools Available via MCP
+
+1. **/fillet_edges** - json={"radius": float}
+   *Best for:* Smoothing out sharp edges (like rounding the corners of a box or smoothing the top of a cylinder).
+   *Behavior:* This automatically fillets ALL sharp edges in the entire design. Keep the radius small (e.g. 0.1 or 0.2) to prevent geometry failure.
+
+2. **/shell_body** - json={"thickness": float, "faceindex": int}
+   *Best for:* Hollowing out a solid object to create containers, cups, or cases.
+   *Behavior:* Hollows out the last created body. `faceindex` determines which face is removed (0 usually removes the top or bottom).
+
+3. **/revolve** - json={"angle": float}
+   *Best for:* Creating symmetrical round objects like bowls, vases, spheres, or toruses.
+   *Behavior:* You must first draw a 2D profile (using `/draw_lines` or `/arc`), and then call `/revolve`. It will revolve the last sketch around the origin axis. `angle` defaults to 360.
+
+4. **/loft** - json={"sketchcount": int}
+   *Best for:* Creating smooth transitions between different shapes (e.g., a square base blending into a circular top, or a pyramid).
+   *Behavior:* You must draw at least two sketches (e.g. one on XY plane, another on an offset plane). Then call loft. `sketchcount` tells it how many of your recent sketches to blend together.
+
+5. **/holes** - json={"points": [[x,y]], "width": float, "depth": float, "through": boolean, "faceindex": int}
+   *Best for:* Punching screw holes, ventilation holes, or circular cutouts into an existing face.
+   *Behavior:* Places holes at the specified 2D points on the face of the last body.
+
+6. **/threaded** - json={"faceindex": int, "pitch": float}
+   *Best for:* Making screws, bolts, or threaded holes.
+   *Behavior:* Applies threads to the cylindrical face of the most recent body.
+
+7. **/cut_extrude** - json={"value": float}
+   *Best for:* Cutting a custom 2D shape out of an existing 3D body.
+   *Behavior:* Draw a sketch on top of a body, then call this to cut downwards by `value` distance.
+
+8. **/boolean_operation** - json={"operation": "join" | "cut" | "intersect", "target_idx": 0, "tool_idx": -1}
+   *Best for:* Combining two separate bodies into one, or using one body to carve a chunk out of another.
+
+## Design Strategy (When to use what)
+
+- **Pyramids**: Draw a square base (`/draw_lines`), then a single point sketch elevated on Z (or a tiny square), then `/loft`.
+- **Cups/Vases**: Draw the 2D cross-section using `/draw_lines` on the XZ plane, then `/revolve`. OR draw a cylinder and use `/shell_body`.
+- **Complex Cutouts**: Draw the shape you want to remove using `/draw_lines`, then `/cut_extrude`.
+- **Smoothing**: Always perform your structural geometry first, and do `/fillet_edges` at the very end.
+
+*Note: 1 Fusion unit = 1cm. All dimensions provided to you in mm must be divided by 10.*

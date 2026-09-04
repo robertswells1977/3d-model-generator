@@ -120,22 +120,30 @@ def run_agent_loop(project_id, description, plan_json, stl_host_path, png_host_p
     except:
         pass
         
-    system_prompt = """
+    kb_path = os.path.join(os.path.dirname(__file__), "CAD_KNOWLEDGE_BASE.txt")
+    cad_knowledge = ""
+    if os.path.exists(kb_path):
+        with open(kb_path, "r") as f:
+            cad_knowledge = f.read()
+            
+    system_prompt = f"""
 You are an autonomous AI CAD Engineer. You are building a 3D model in Autodesk Fusion 360.
 You will think step-by-step and execute one tool at a time.
 
 Fusion 360 Units: 1 unit = 1 cm = 10 mm. All mm dimensions must be divided by 10 (e.g. 10.0 becomes 1.0).
 
-Available tools:
-1. "draw_box" - args: {"width_value": float, "height_value": float, "depth_value": float, "x_value": float, "y_value": float, "z_value": float}
-2. "draw_cylinder" - args: {"radius": float, "height": float, "x": float, "y": float, "z": float}
-3. "sphere" - args: {"radius": float, "x": float, "y": float, "z": float}
-4. "draw_lines" - args: {"points": [[x,y,z], [x,y,z], ...]} (Draws a closed 2D polygon)
-5. "extrude_last_sketch" - args: {"value": float, "taperangle": float} (Extrudes the polygon you just drew)
-6. "finish" - args: {} (Call this when the 3D model is completely finished)
+Available primitives:
+1. "draw_box" - args: {{"width_value": float, "height_value": float, "depth_value": float, "x_value": float, "y_value": float, "z_value": float}}
+2. "draw_cylinder" - args: {{"radius": float, "height": float, "x": float, "y": float, "z": float}}
+3. "sphere" - args: {{"radius": float, "x": float, "y": float, "z": float}}
+4. "draw_lines" - args: {{"points": [[x,y,z], [x,y,z], ...]}} (Draws a closed 2D polygon)
+5. "extrude_last_sketch" - args: {{"value": float, "taperangle": float}} (Extrudes the polygon you just drew)
+6. "finish" - args: {{}} (Call this when the 3D model is completely finished)
 
-To execute a tool, output a single JSON object (and NO OTHER TEXT) matching this format exactly:
-{"thought": "I need to draw a base triangle first", "tool": "draw_lines", "args": {"points": [[0,0,0], [2,0,0], [1,2,0]]}}
+{cad_knowledge}
+
+To execute a tool (whether primitive or advanced), output a single JSON object (and NO OTHER TEXT) matching this format exactly:
+{{"thought": "I need to draw a base triangle first", "tool": "draw_lines", "args": {{"points": [[0,0,0], [2,0,0], [1,2,0]]}}}}
 
 The system will then respond with the result of the tool execution. Then you will output the next tool call, until you call "finish".
 """
@@ -157,7 +165,15 @@ The system will then respond with the result of the tool execution. Then you wil
         "draw_cylinder": "/draw_cylinder",
         "sphere": "/sphere",
         "draw_lines": "/draw_lines",
-        "extrude_last_sketch": "/extrude_last_sketch"
+        "extrude_last_sketch": "/extrude_last_sketch",
+        "fillet_edges": "/fillet_edges",
+        "shell_body": "/shell_body",
+        "revolve": "/revolve",
+        "loft": "/loft",
+        "holes": "/holes",
+        "threaded": "/threaded",
+        "cut_extrude": "/cut_extrude",
+        "boolean_operation": "/boolean_operation"
     }
     
     max_steps = 15
