@@ -113,7 +113,7 @@ Return ONLY JSON matching this exact structure:
         cur.execute("UPDATE Projects SET LLMPlan = %s, Status = 'planned' WHERE Id = %s", (json.dumps(fallback_plan), project_id))
         conn.commit()
     finally:
-def run_agent_loop(project_id, description, plan_json, stl_host_path):
+def run_agent_loop(project_id, description, plan_json, stl_host_path, png_host_path):
     log_to_project(project_id, "Executing: Starting a fresh Fusion Workspace (new_design)...")
     try:
         requests.post(f"{FUSION_URL}/new_design", json={}, timeout=10)
@@ -216,8 +216,15 @@ The system will then respond with the result of the tool execution. Then you wil
         if resp.status_code != 200:
             log_to_project(project_id, f"STL Export failed: {resp.text}")
             return False, resp.text
+            
+        # Capture Image
+        log_to_project(project_id, f"Capturing render image -> {png_host_path}")
+        img_args = {"Name": png_host_path}
+        img_resp = requests.post(f"{FUSION_URL}/capture_image", json=img_args, timeout=30)
+        if img_resp.status_code != 200:
+            log_to_project(project_id, f"Warning: Failed to capture image: {img_resp.text}")
     except Exception as e:
-        log_to_project(project_id, f"STL Export connection error: {e}")
+        log_to_project(project_id, f"STL Export / Image Capture connection error: {e}")
         return False, str(e)
         
     return True, "Success"
@@ -237,38 +244,41 @@ def process_project(project):
         
         stl_filename = f"project_{project_id}_v{attempt}.stl"
         stl_host_path = f"{EXPORT_DIR_HOST}/{stl_filename}"
+        stl_container_path = f"/temp/{stl_filename}"
         
-        success, error_msg = run_agent_loop(project_id, description, plan_json, stl_host_path)
-            
-            if success:
-                time.sleep(2)
-                if os.path.exists(stl_container_path):
-                    log_to_project(project_id, "Fusion executed successfully and STL verified on disk!")
-                    
-                    version_id = str(uuid.uuid4())
-                    cur.execute("""
-                        INSERT INTO ProjectVersions (Id, ProjectId, VersionNumber, Status, FilePathSTL, ImagePath, AgentLog)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """, (version_id, project_id, attempt, "viable option", f"/temp/{stl_filename}", None, "Success! MCP sequence executed."))
-                    conn.commit()
-                    
-                    cur.execute("UPDATE Projects SET Status = 'completed' WHERE Id = %s", (project_id,))
-                    conn.commit()
-                    log_to_project(project_id, "Project generation entirely complete!")
-                    break
-                else:
-                    log_to_project(project_id, "ERROR: Fusion returned 200, but STL file was NOT created on disk.")
-                    previous_error = "STL file was not created on disk."
-            else:
-                log_to_project(project_id, f"Fusion error: {error_msg}")
-                previous_error = error_msg
+        png_filename = f"project_{project_id}_v{attempt}.png"
+        png_host_path = f"{EXPORT_DIR_HOST}/{png_filename}"
+        png_container_path = f"/temp/{png_filename}"
+        
+        success, error_msg = run_agent_loop(project_id, description, plan_json, stl_host_path, png_host_path)
+        
+        if success:
+            time.sleep(2)
+            if os.path.exists(stl_container_path):
+                log_to_project(project_id, "Fusion executed successfully and STL verified on disk!")
                 
-        except Exception as e:
-            log_to_project(project_id, f"Exception during attempt: {str(e)}")
-            previous_error = str(e)
+                # Check if PNG exists, fallback to None
+                image_path_db = png_container_path if os.path.exists(png_container_path) else None
+                
+                version_id = str(uuid.uuid4())
+                cur.execute("""
+                    INSERT INTO ProjectVersions (Id, ProjectId, VersionNumber, Status, FilePathSTL, ImagePath, AgentLog)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (version_id, project_id, attempt, "viable option", f"/temp/{stl_filename}", image_path_db, "Success! Agent loop completed."))
+                conn.commit()
+                
+                cur.execute("UPDATE Projects SET Status = 'completed' WHERE Id = %s", (project_id,))
+                conn.commit()
+                log_to_project(project_id, "Project generation entirely complete!")
+                break
+            else:
+                log_to_project(project_id, "ERROR: Fusion returned 200, but STL file was NOT created on disk.")
+                
+        else:
+            log_to_project(project_id, f"Agent Loop Failed: {error_msg}")
             
     else:
-        log_to_project(project_id, "Failed 10 attempts. Project marked as failed.")
+        log_to_project(project_id, "Failed 3 attempts. Project marked as failed.")
         cur.execute("UPDATE Projects SET Status = 'failed' WHERE Id = %s", (project_id,))
         conn.commit()
         
