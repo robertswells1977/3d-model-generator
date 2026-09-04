@@ -19,6 +19,21 @@ services:
       - "8080:8080"
     volumes:
       - ./models:/models
+      
+  worker:
+    build: 
+      context: ./functions
+    environment:
+      - DB_HOST=db
+      - LLM_URL=http://llama-server:8080/v1
+      - FUSION_URL=http://host.docker.internal:5000
+      - EXPORT_DIR_HOST=/Users/robwells/sc/3d-model-generator/temp
+    volumes:
+      - ./temp:/temp
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - db
 
 volumes:
   postgres_data:
