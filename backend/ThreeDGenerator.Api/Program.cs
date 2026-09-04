@@ -1,16 +1,15 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<ThreeDGenerator.Api.Repositories.ProjectRepository>();
 
-// Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Key"] ?? "a_very_long_secret_key_for_development_purposes_only_1234567890");
 
@@ -29,7 +28,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// CORS for Frontend
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
@@ -49,6 +47,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowFrontend");
+
+// Serve the temp directory containing STLs and images
+var tempPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "temp");
+if (!Directory.Exists(tempPath)) Directory.CreateDirectory(tempPath);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(tempPath),
+    RequestPath = "/temp"
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
