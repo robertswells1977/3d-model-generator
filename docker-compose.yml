@@ -14,7 +14,7 @@ services:
 
   llama-server:
     image: ghcr.io/ggml-org/llama.cpp:server
-    command: -m /models/gemma-2-8b-it.Q4_K_M.gguf --host 0.0.0.0 --port 8080
+    command: -m /models/gemma-2-2b-it-Q4_K_M.gguf --host 0.0.0.0 --port 8080
     ports:
       - "8082:8080"
     volumes:
@@ -24,6 +24,7 @@ services:
     build: 
       context: ./functions
     environment:
+      - PYTHONUNBUFFERED=1
       - DB_HOST=db
       - LLM_URL=http://llama-server:8080/v1
       - FUSION_URL=http://host.docker.internal:5000

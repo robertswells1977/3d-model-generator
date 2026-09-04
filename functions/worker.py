@@ -34,7 +34,7 @@ Do not include markdown blocks, just pure python code.
         prompt += f"\n\nThe previous attempt failed with this error: {previous_error}\nPlease fix it."
 
     response = client.chat.completions.create(
-        model="gemma-2-8b-it",
+        model="gemma-2-2b-it",
         messages=[
             {"role": "system", "content": "You are an expert Autodesk Fusion 360 API Python developer. Only output raw Python code. Do not wrap in markdown."},
             {"role": "user", "content": prompt}
