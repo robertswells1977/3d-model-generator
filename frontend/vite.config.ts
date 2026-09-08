@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     allowedHosts: true,
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups"
+    },
     proxy: {
       '/api': {
         target: 'http://api:5045',
