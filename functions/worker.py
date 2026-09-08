@@ -9,6 +9,7 @@ from openai import OpenAI
 
 DB_HOST = os.getenv("DB_HOST", "db")
 LLM_URL = os.getenv("LLM_URL", "http://llama-server:8080/v1")
+LLM_MODEL = os.getenv("LLM_MODEL", "gemma-2-2b-it")
 FUSION_URL = os.getenv("FUSION_URL", "http://host.docker.internal:5000")
 EXPORT_DIR_HOST = os.getenv("EXPORT_DIR_HOST", "/Users/robwells/sc/3d-model-generator/temp")
 API_INTERNAL_URL = "http://api:5045/api"
@@ -63,9 +64,9 @@ Return ONLY JSON matching this exact structure:
   "image_prompt": "A clean 3D render of a..."
 }}
 """
-        log_to_project(project_id, "Prompting LLM (gemma-2-2b-it) to structure CAD parts...")
+        log_to_project(project_id, f"Prompting LLM ({LLM_MODEL}) to structure CAD parts...")
         response = client.chat.completions.create(
-            model="gemma-2-2b-it",
+            model=LLM_MODEL,
             messages=[
                 {"role": "system", "content": "You output strict JSON. No markdown."},
                 {"role": "user", "content": prompt}
@@ -184,7 +185,7 @@ The system will then respond with the result of the tool execution. Then you wil
     for step in range(max_steps):
         log_to_project(project_id, f"Agent Thinking (Step {step+1}/{max_steps})...")
         response = client.chat.completions.create(
-            model="gemma-2-2b-it",
+            model=LLM_MODEL,
             messages=messages,
             temperature=0.1
         )
