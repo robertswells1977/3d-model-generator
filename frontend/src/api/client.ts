@@ -80,4 +80,4 @@ export const fetchFusionStatus = async (): Promise<{status: string, reason?: str
   return res.json();
 };
 
-export const HUB_URL = "http://localhost:5045/hubs/project";
+export const HUB_URL = API_URL.replace('/api', '/hubs/project');
