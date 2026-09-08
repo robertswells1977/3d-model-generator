@@ -139,9 +139,9 @@ You will think step-by-step and execute one tool at a time.
 Fusion 360 Units: 1 unit = 1 cm = 10 mm. All mm dimensions must be divided by 10 (e.g. 10.0 becomes 1.0).
 
 Available primitives:
-1. "draw_box" - args: {{"width_value": float, "height_value": float, "depth_value": float, "x_value": float, "y_value": float, "z_value": float}}
-2. "draw_cylinder" - args: {{"radius": float, "height": float, "x": float, "y": float, "z": float}}
-3. "sphere" - args: {{"radius": float, "x": float, "y": float, "z": float}}
+1. "draw_box" - args: {{"width": float, "height": float, "depth": float, "x": float, "y": float, "z": float, "plane": "XY" | "XZ" | "YZ"}} (x, y is the CENTER)
+2. "draw_cylinder" - args: {{"radius": float, "height": float, "x": float, "y": float, "z": float, "plane": "XY" | "XZ" | "YZ"}} (x, y is the CENTER)
+3. "sphere" - args: {{"radius": float, "x": float, "y": float, "z": float}} (x, y, z is the CENTER)
 4. "draw_lines" - args: {{"points": [[x,y,z], [x,y,z], ...]}} (Draws a closed 2D polygon)
 5. "extrude_last_sketch" - args: {{"value": float, "taperangle": float}} (Extrudes the polygon you just drew)
 6. "finish" - args: {{}} (Call this when the 3D model is completely finished)
