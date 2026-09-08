@@ -148,7 +148,9 @@ Available primitives:
 {cad_knowledge}
 
 To execute a tool (whether primitive or advanced), output a single JSON object (and NO OTHER TEXT) matching this format exactly:
-{{"thought": "I need to draw a base triangle first", "tool": "draw_lines", "args": {{"points": [[0,0,0], [2,0,0], [1,2,0]]}}}}
+{{"thought": "1. Analyze requirement: Need 3 legs for a stool of height 3.\n2. Calculate coords using trig at radius R=1.0: Leg 1=(1.0, 0), Leg 2=(-0.5, 0.866), Leg 3=(-0.5, -0.866).\n3. Set Z-axis to 0.", "tool": "draw_cylinder", "args": {{"radius": 0.2, "height": 3.0, "x": 1.0, "y": 0, "z": 0}}}}
+
+CRITICAL: You MUST write out your exact mathematical coordinate calculations inside the "thought" field before providing the "args". Do not guess coordinates.
 
 The system will then respond with the result of the tool execution. Then you will output the next tool call, until you call "finish".
 """
