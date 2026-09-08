@@ -21,7 +21,8 @@ export function useProjectLogs(projectId: string | null) {
             try {
                 await connection.start();
                 await connection.invoke("JoinProjectGroup", projectId);
-            } catch (e) {
+            } catch (e: any) {
+                if (e?.message?.includes("stopped during negotiation")) return;
                 console.error("SignalR Connection Error: ", e);
             }
         };
