@@ -71,6 +71,7 @@ Return ONLY JSON matching this exact structure:
                 {"role": "system", "content": "You output strict JSON. No markdown."},
                 {"role": "user", "content": prompt}
             ],
+            response_format={"type": "json_object"},
             temperature=0.3
         )
         content = response.choices[0].message.content.strip()
@@ -189,10 +190,14 @@ The system will then respond with the result of the tool execution. Then you wil
         response = client.chat.completions.create(
             model=LLM_MODEL,
             messages=messages,
-            temperature=0.1
+            temperature=0.1,
+            response_format={"type": "json_object"}
         )
         content = response.choices[0].message.content.strip()
-        content = content.replace("```json", "").replace("```", "").strip()
+        start_idx = content.find('{')
+        end_idx = content.rfind('}')
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            content = content[start_idx:end_idx+1]
         
         try:
             command = json.loads(content)
