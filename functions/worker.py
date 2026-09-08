@@ -149,7 +149,7 @@ Available primitives:
 {cad_knowledge}
 
 To execute a tool (whether primitive or advanced), output a SINGLE JSON object (and NO OTHER TEXT) matching this format exactly:
-{{"thought": "1. Analyze requirement: Need 3 legs for a stool of height 3.\n2. Calculate coords using trig at radius R=1.0: Leg 1=(1.0, 0), Leg 2=(-0.5, 0.866), Leg 3=(-0.5, -0.866).\n3. Set Z-axis to 0.", "tool": "draw_cylinder", "args": {{"radius": 0.2, "height": 3.0, "x": 1.0, "y": 0, "z": 0}}}}
+{{"thought": "1. Analyze requirement: Need 4 legs for a table of height 5.\\n2. Calculate coords using trig at radius R=2.0: Leg 1=(2.0, 0), Leg 2=(0, 2.0), Leg 3=(-2.0, 0), Leg 4=(0, -2.0).\\n3. Set Z-axis to 0.", "tool": "draw_cylinder", "args": {{"radius": 0.3, "height": 5.0, "x": 2.0, "y": 0, "z": 0, "plane": "XY"}}}}
 
 CRITICAL RULES:
 1. You MUST write out your exact mathematical coordinate calculations inside the "thought" field before providing the "args". Do not guess coordinates.
