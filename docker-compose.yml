@@ -12,14 +12,7 @@ services:
       - ./database/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
       - postgres_data:/var/lib/postgresql/data
 
-  llama-server:
-    image: ghcr.io/ggml-org/llama.cpp:server
-    command: -m /models/gemma-2-2b-it-Q4_K_M.gguf --host 0.0.0.0 --port 8080
-    ports:
-      - "8082:8080"
-    volumes:
-      - ./models:/models
-      
+
   worker:
     build: 
       context: ./functions
@@ -36,7 +29,6 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       - db
-      - llama-server
 
   api:
     build:
