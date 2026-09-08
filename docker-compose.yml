@@ -26,7 +26,8 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DB_HOST=db
-      - LLM_URL=http://llama-server:8080/v1
+      - LLM_URL=https://llm-api.alreadyagents.com/v1
+      - LLM_MODEL=Llama-3.1-8B-Instruct
       - FUSION_URL=http://host.docker.internal:5000
       - EXPORT_DIR_HOST=/Users/robwells/sc/3d-model-generator/temp
     volumes:
