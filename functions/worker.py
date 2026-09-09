@@ -48,7 +48,7 @@ Determine the structural components needed to build this model.
 You must define AT LEAST ONE part in the "parts" array, even if it is a "single" model type.
 For each part, provide an estimated height, width, and length (floats in cm).
 Also provide a list of basic geometric shapes that could be used to construct the part (e.g. box, cylinder, sphere, polygon).
-CRITICAL: If a part is a hole or a hollowed-out section, you MUST state "boolean cut" in the "connections" description. Do NOT just say "attached".
+CRITICAL: If (and ONLY if) the user specifically asks for a hole, tunnel, or hollow section, you must state "boolean cut" in the "connections" description for that hole part. Otherwise, just say "attached".
 
 Return a JSON object matching this schema:
 {{
@@ -155,7 +155,7 @@ Available primitives:
 {cad_knowledge}
 
 To execute a tool (whether primitive or advanced), output a SINGLE JSON object (and NO OTHER TEXT) matching this format exactly:
-{{"thought": "1. Analyze requirement: Need 4 legs for a table of height 5.\\n2. Calculate coords using trig at radius R=2.0: Leg 1=(2.0, 0), Leg 2=(0, 2.0), Leg 3=(-2.0, 0), Leg 4=(0, -2.0).\\n3. Set Z-axis to 0.", "tool": "draw_cylinder", "args": {{"radius": 0.3, "height": 5.0, "x": 2.0, "y": 0, "z": 0, "plane": "XY"}}}}
+{{"thought": "1. Analyze requirement: Need a pyramid-like shape for a traffic cone.\\n2. Draw the square base at Z=0: size 4x4.\\n3. Use loft to connect it to a tiny square at Z=5.", "tool": "draw_box", "args": {{"width": 4.0, "height": 4.0, "depth": 0.5, "x": 0, "y": 0, "z": 0, "plane": "XY"}}}}
 
 CRITICAL RULES:
 1. You MUST write out your exact mathematical coordinate calculations inside the "thought" field before providing the "args". Do not guess coordinates.
