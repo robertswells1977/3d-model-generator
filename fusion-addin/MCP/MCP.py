@@ -305,12 +305,15 @@ def create_sphere(design, ui, radius, x, y, z, plane="XY"):
         if plane == "XZ":
             basePlane = rootComp.xZConstructionPlane
             offset_val = y
+            cx, cy = x, z
         elif plane == "YZ":
             basePlane = rootComp.yZConstructionPlane
             offset_val = x
+            cx, cy = y, z
         else:
             basePlane = rootComp.xYConstructionPlane
             offset_val = z
+            cx, cy = x, y
 
         if offset_val != 0:
             planeInput = planes.createInput()
@@ -323,12 +326,12 @@ def create_sphere(design, ui, radius, x, y, z, plane="XY"):
             
         # Draw a circle.
         circles = sketch.sketchCurves.sketchCircles
-        circles.addByCenterRadius(adsk.core.Point3D.create(x,y,z), radius)
+        circles.addByCenterRadius(adsk.core.Point3D.create(cx, cy, 0), radius)
         # Draw a line to use as the axis of revolution.
         lines = sketch.sketchCurves.sketchLines
         axisLine = lines.addByTwoPoints(
-            adsk.core.Point3D.create(x - radius, y, z),
-            adsk.core.Point3D.create(x + radius, y, z)
+            adsk.core.Point3D.create(cx - radius, cy, 0),
+            adsk.core.Point3D.create(cx + radius, cy, 0)
         )
 
         # Get the profile defined by half of the circle.
@@ -1390,7 +1393,7 @@ def draw_cylinder(design, ui, radius, height, x,y,z,plane = "XY"):
         else:
             sketch = sketches.add(basePlane)
 
-        center = adsk.core.Point3D.create(x, y, z)
+        center = adsk.core.Point3D.create(cx, cy, 0)
         sketch.sketchCurves.sketchCircles.addByCenterRadius(center, radius)
 
         prof = sketch.profiles.item(0)
