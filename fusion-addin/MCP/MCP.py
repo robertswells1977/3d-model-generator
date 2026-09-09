@@ -128,7 +128,8 @@ class TaskEventHandler(adsk.core.CustomEventHandler):
         elif task[0] == 'ellipsis':
             draw_ellipis(design,ui,task[1],task[2],task[3],task[4],task[5],task[6],task[7],task[8],task[9],task[10])
         elif task[0] == 'draw_sphere':
-            create_sphere(design, ui, task[1], task[2], task[3], task[4])
+            plane = task[5] if len(task) > 5 else "XY"
+            create_sphere(design, ui, task[1], task[2], task[3], task[4], plane)
         elif task[0] == 'threaded':
             # task format: ('threaded', inside, sizes, body_idx, face_idx, radius)
             # task_queue.put(('threaded', inside, allsizes, body_index, face_index, radius))
@@ -295,15 +296,31 @@ def draw_text(design, ui, text, thickness,
     except:
         if ui:
             print('Failed draw_text:\n{}'.format(traceback.format_exc()))
-def create_sphere(design, ui, radius, x, y, z):
+def create_sphere(design, ui, radius, x, y, z, plane="XY"):
     try:
         rootComp = design.rootComponent
-        component: adsk.fusion.Component = design.rootComponent
-        # Create a new sketch on the xy plane.
         sketches = rootComp.sketches
+        planes = rootComp.constructionPlanes
         
-        xyPlane =  rootComp.xYConstructionPlane
-        sketch = sketches.add(xyPlane)
+        if plane == "XZ":
+            basePlane = rootComp.xZConstructionPlane
+            offset_val = y
+        elif plane == "YZ":
+            basePlane = rootComp.yZConstructionPlane
+            offset_val = x
+        else:
+            basePlane = rootComp.xYConstructionPlane
+            offset_val = z
+
+        if offset_val != 0:
+            planeInput = planes.createInput()
+            offsetValue = adsk.core.ValueInput.createByReal(offset_val)
+            planeInput.setByOffset(basePlane, offsetValue)
+            offsetPlane = planes.add(planeInput)
+            sketch = sketches.add(offsetPlane)
+        else:
+            sketch = sketches.add(basePlane)
+            
         # Draw a circle.
         circles = sketch.sketchCurves.sketchCircles
         circles.addByCenterRadius(adsk.core.Point3D.create(x,y,z), radius)
@@ -1349,13 +1366,29 @@ def draw_cylinder(design, ui, radius, height, x,y,z,plane = "XY"):
     try:
         rootComp = design.rootComponent
         sketches = rootComp.sketches
-        xyPlane = rootComp.xYConstructionPlane
+        planes = rootComp.constructionPlanes
+        
         if plane == "XZ":
-            sketch = sketches.add(rootComp.xZConstructionPlane)
+            basePlane = rootComp.xZConstructionPlane
+            offset_val = y
+            cx, cy = x, z
         elif plane == "YZ":
-            sketch = sketches.add(rootComp.yZConstructionPlane)
+            basePlane = rootComp.yZConstructionPlane
+            offset_val = x
+            cx, cy = y, z
         else:
-            sketch = sketches.add(xyPlane)
+            basePlane = rootComp.xYConstructionPlane
+            offset_val = z
+            cx, cy = x, y
+
+        if offset_val != 0:
+            planeInput = planes.createInput()
+            offsetValue = adsk.core.ValueInput.createByReal(offset_val)
+            planeInput.setByOffset(basePlane, offsetValue)
+            offsetPlane = planes.add(planeInput)
+            sketch = sketches.add(offsetPlane)
+        else:
+            sketch = sketches.add(basePlane)
 
         center = adsk.core.Point3D.create(x, y, z)
         sketch.sketchCurves.sketchCircles.addByCenterRadius(center, radius)
