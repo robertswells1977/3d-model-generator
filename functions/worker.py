@@ -47,8 +47,10 @@ Analyze this description: "{description}"
 Determine the structural components needed to build this model.
 You must define AT LEAST ONE part in the "parts" array, even if it is a "single" model type.
 For each part, provide an estimated height, width, and length (floats in cm).
+Also provide a list of basic geometric shapes that could be used to construct the part (e.g. box, cylinder, sphere, polygon).
+CRITICAL: If a part is a hole or a hollowed-out section, you MUST state "boolean cut" in the "connections" description. Do NOT just say "attached".
 
-Return ONLY JSON matching this exact structure:
+Return a JSON object matching this schema:
 {{
   "type": "single" | "multi-part",
   "parts": [
@@ -154,6 +156,7 @@ To execute a tool (whether primitive or advanced), output a SINGLE JSON object (
 CRITICAL RULES:
 1. You MUST write out your exact mathematical coordinate calculations inside the "thought" field before providing the "args". Do not guess coordinates.
 2. You MUST output EXACTLY ONE tool call per response. NEVER stack multiple JSON objects. Execute one step, wait for the result, then execute the next.
+3. Verify your "tool" selection matches your thought. Do NOT use "draw_box" when you mean to use "sphere" or "draw_cylinder". If you want a hole, you MUST use "boolean_operation" with "cut".
 
 The system will then respond with the result of the tool execution. Then you will output the next tool call, until you call "finish".
 """
