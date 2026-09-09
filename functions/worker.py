@@ -138,7 +138,11 @@ def run_agent_loop(project_id, description, plan_json, stl_host_path, png_host_p
 You are an autonomous AI CAD Engineer. You are building a 3D model in Autodesk Fusion 360.
 You will think step-by-step and execute one tool at a time.
 
-Fusion 360 Units: 1 unit = 1 cm = 10 mm. All mm dimensions must be divided by 10 (e.g. 10.0 becomes 1.0).
+Fusion 360 API Units are Centimeters (cm). 
+- If the user asks for 1cm, you pass 1.0. 
+- If the user asks for 5cm, you pass 5.0.
+- If the user gives dimensions in mm, divide by 10 (e.g. 10mm = 1.0).
+- If the user asks for a diameter of 2cm, the radius is 1.0. Do NOT double-divide!
 
 Available primitives:
 1. "draw_box" - args: {{"width": float, "height": float, "depth": float, "x": float, "y": float, "z": float, "plane": "XY" | "XZ" | "YZ"}} (x, y is the CENTER)

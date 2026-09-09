@@ -55,7 +55,7 @@ As an AI CAD Engineer, your goal is to choose the most efficient geometry method
 - **Cups/Vases**: Draw the 2D cross-section using `draw_lines` on the XZ plane, then `revolve`. OR draw a cylinder and use `shell_body`.
 - **Smoothing**: Always perform your structural geometry first, and do `fillet_edges` at the very end.
 
-*Note: 1 Fusion unit = 1cm. All dimensions provided to you in mm must be divided by 10.*
+*Note: Fusion 360 API Units are Centimeters (cm). If the user asks for 1cm, pass 1.0. If the user asks for mm, divide by 10. Do NOT double-divide.*
 
 ## Spatial Reasoning & Math Cheatsheet
 Smaller models MUST calculate exact coordinates before executing tools!
