@@ -35,6 +35,18 @@ As an AI CAD Engineer, your goal is to choose the most efficient geometry method
 8. **boolean_operation** - json={"operation": "join" | "cut" | "intersect", "target_idx": 0, "tool_idx": -1}
    *Best for:* Combining two separate bodies into one, or using one body to carve a chunk out of another.
 
+9. **move_body** - json={"x": float, "y": float, "z": float}
+   *Best for:* Shifting the most recently created body by an exact coordinate offset.
+
+10. **circular_pattern** - json={"quantity": int, "axis": "X" | "Y" | "Z", "plane": "XY"}
+    *Best for:* Duplicating the last body in a circular ring (e.g. table legs around a center, gear teeth).
+
+11. **rectangular_pattern** - json={"quantity_one": int, "distance_one": float, "axis_one": "X", "quantity_two": int, "distance_two": float, "axis_two": "Y"}
+    *Best for:* Creating a grid of objects (e.g. keyboard keys, vents).
+
+12. **arc** - json={"point1": [x,y], "point2": [x,y], "point3": [x,y], "connect": true, "plane": "XY"}
+    *Best for:* Drawing a 2D curved line. Set `connect: true` to close the shape so it can be extruded.
+
 ## Design Strategy (When to use what)
 
 - **Spheres & Balls**: If the prompt asks for a ball or sphere, YOU MUST USE THE `sphere` TOOL! Do NOT use `draw_box`.

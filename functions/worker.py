@@ -186,7 +186,11 @@ The system will then respond with the result of the tool execution. Then you wil
         "holes": "/holes",
         "threaded": "/threaded",
         "cut_extrude": "/cut_extrude",
-        "boolean_operation": "/boolean_operation"
+        "boolean_operation": "/boolean_operation",
+        "arc": "/arc",
+        "circular_pattern": "/circular_pattern",
+        "rectangular_pattern": "/rectangular_pattern",
+        "move_body": "/move_body"
     }
     
     max_steps = 15
